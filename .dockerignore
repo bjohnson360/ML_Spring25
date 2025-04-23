@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pkl
+data/img_align_celeba/
+data/Dataset_FDDB/
+data/Dataset_LFPW/
