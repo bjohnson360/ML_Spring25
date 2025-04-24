@@ -39,11 +39,12 @@ def main(image_path, add_name=None, threshold=0.65):
 
     image.show()
 
+# makes script CLI executable --> python app.py --image image.jpg --add_name name
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', required=True, help='Path to image')
     parser.add_argument('--add_name', help='If passed, adds this name as a known identity')
-    parser.add_argument('--threshold', type=float, default=0.65)
+    parser.add_argument('--threshold', type=float, default=0.65) # cosine similarity threshold used by matcher
     args = parser.parse_args()
 
     main(args.image, add_name=args.add_name, threshold=args.threshold)

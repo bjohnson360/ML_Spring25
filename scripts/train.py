@@ -29,7 +29,7 @@ train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, pin_memory=True)
 
-# --- Benchmark CPU vs GPU ---
+# --- Benchmark CPU vs GPU --- trains model twice (once on cpu, once on gpu)
 training_times = {}
 for device_type in ['cuda', 'cpu']:
     if device_type == 'cuda' and not torch.cuda.is_available():
@@ -45,6 +45,11 @@ for device_type in ['cuda', 'cpu']:
     best_val_loss = float('inf')
     train_losses, val_losses, epoch_times = [], [], []
     start_time = time.time()
+
+    # trains on all training batches
+    # validates on validation set
+    # measures epoch duration
+    # tracks --> train loss, validation loss, validation accuracy, epoch time
     for epoch in range(epochs):
         epoch_start = time.time()
         model.train()
