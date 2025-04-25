@@ -4,47 +4,60 @@ import torch.nn.functional as F
 from torchvision import models, transforms
 from PIL import Image
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# Image Preprocessing
-crop_transform = transforms.Compose([
-    transforms.Resize((128, 128)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-])
-
-# GoogLeNet-based embedding model
 class GoogLeNetEmbedder(nn.Module):
-    def __init__(self, embedding_dim=128):
-        super().__init__()
-        base = models.googlenet(weights='DEFAULT', aux_logits=True)
-        base.fc = nn.Identity() # get raw feature vecotrs
-        self.backbone = base
-        self.embed = nn.Linear(1024, embedding_dim)  # reduce feature size
+    """
+    A face embedding model that uses GoogLeNet as the feature extractor.
+    Extracts 128D vectors from input face images.
 
-    # Feeds image through GoogLeNet to get features
-    # --> passes through Linear layer to get 128D vectors
-    # --> normalizes to unit length (key for cosine similarity)
+    Attributes:
+        backbone (nn.Module): GoogLeNet model without classification head.
+        embed (nn.Linear): Linear layer to reduce GoogLeNet output to 128D.
+    """
+    def __init__(self, embedding_dim=128):
+        """
+        Initialize the embedder with GoogLeNet backbone and 128D projection layer.
+
+        Args:
+            embedding_dim (int): Dimensionality of the final face embedding.
+        """
+        super().__init__()
+
+        # Load pretrained GoogLeNet with auxiliary classifiers enabled
+        #   This helps teh model train better --> provides extra gradient signals early in network
+        base = models.googlenet(weights='DEFAULT', aux_logits=True)
+
+        # Remove classification head (raw feature vectors only)
+        base.fc = nn.Identity()
+        self.backbone = base
+
+        # Final layer to reduce 1024D GoogLeNet features to desired embedding_dim (default 128)
+        self.embed = nn.Linear(1024, embedding_dim)
+
     def forward(self, x):
+        """
+        Forward pass: extract 128D normalized embeddings from input image batch.
+
+        Args:
+            x (Tensor): Input tensor of shape [N, 3, H, W]
+
+        Returns:
+            Tensor: Normalized face embeddings of shape [N, embedding_dim]
+        """
+
+        # Pass input through GoogLeNet backbone
         out = self.backbone(x)
+
+        # Handle case where GoogLeNet returns (main_output, aux1, aux2)
+        #   train() --> tuple
+        #   eval() --> single tensor
         if isinstance(out, tuple):
-            x = out[0]  # main output
+            x = out[0]
         else:
             x = out
+
+        # Project to 128D embedding space
         x = self.embed(x)
+
+        # Normalize to unit length for cosine similarity comparison
         return F.normalize(x, p=2, dim=1)
 
-# Load model
-model = GoogLeNetEmbedder().to(device).eval()
-
-# Preprocesses face crops --> converts each to 4D tensor and batches
-# Outputs a tensor of shape [N, 128] where each row is a normalized embedding of a face crop
-def get_embeddings(face_crops):
-    """ Generate embeddings for a list of face crops (PIL images). """
-    tensors = [crop_transform(face).unsqueeze(0).to(device) for face in face_crops]
-    batch = torch.cat(tensors, dim=0)
-
-    with torch.no_grad():
-        embeddings = model(batch)
-
-    return embeddings.cpu()

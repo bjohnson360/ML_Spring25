@@ -3,7 +3,14 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="/performance_metrics.csv">
+        <entry key="/data/fddb_crops/fddb_labels.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/metrics/performance_metrics.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

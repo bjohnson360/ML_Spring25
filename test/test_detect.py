@@ -1,7 +1,8 @@
-from detect_faces import detect_faces
-from recognize_faces import get_embeddings
+from scripts.detect_faces import detect_faces
+from models.face_classifier import FaceClassifier
 from utils.matcher import FaceMatcher
 from PIL import ImageDraw
+import torch
 
 boxes, img = detect_faces("data/sample.jpg", threshold=0.6)
 draw = ImageDraw.Draw(img)
@@ -11,8 +12,13 @@ for box in boxes:
 
 # img.show()
 
+model = FaceClassifier()
+checkpoint = torch.load("metrics/best_model_cpu.pth", map_location='cpu')
+model.load_state_dict({k: v for k, v in checkpoint.items() if not k.startswith("classifier.")}, strict=False)
+model.eval()
+
 faces = [img.crop(box.tolist()) for box in boxes]
-embeddings = get_embeddings(faces)
+embeddings = model.get_embeddings(faces)
 
 # for i, emb in enumerate(embeddings):
 #     print(f"Face {i}: {emb[:5]}...")  # Preview first 5 dims

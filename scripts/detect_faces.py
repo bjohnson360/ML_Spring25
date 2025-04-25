@@ -34,4 +34,6 @@ def detect_faces(image_path, threshold=0.9):
                 box = [float(coord) for coord in box]
                 filtered_boxes.append(torch.tensor(box))
 
+    # face_crops = mtcnn.extract(image, filtered_boxes, save_path=None)
+
     return filtered_boxes, image

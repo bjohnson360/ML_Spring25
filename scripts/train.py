@@ -4,16 +4,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
-import sys
 import matplotlib.pyplot as plt
+import sys
 
-sys.path.append('/workspace/ML_Spring25')
-# sys.path.append('/workspace/ML_Spring25/models')
+sys.path.append('/workspace/ML_Spring25') # add project dir to sys path for module imports
 
 from datasets.fddb_dataset import FDDBFaceDataset
 from models.face_classifier import FaceClassifier
 
-# --- Configuration ---
+# --- Config/Hyperparams ---
 csv_path = 'data/fddb_crops/fddb_labels.csv'
 image_dir = 'data/fddb_crops'
 batch_size = 64
@@ -23,9 +22,13 @@ learning_rate = 1e-3
 # --- Load Dataset ---
 dataset = FDDBFaceDataset(csv_file=csv_path, img_dir=image_dir)
 num_classes = len(set(dataset.annotations['label']))  # dynamically count classes
+
+# Train Val Split
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
 train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+
+# Create data loaders
 train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, pin_memory=True)
 
@@ -37,7 +40,7 @@ for device_type in ['cuda', 'cpu']:
     device = torch.device(device_type)
     print(f"\nTraining on: {device}")
 
-    # Initialize model, loss, optimizer
+    # model, loss, optimizer
     model = FaceClassifier(num_classes=num_classes).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -46,10 +49,11 @@ for device_type in ['cuda', 'cpu']:
     train_losses, val_losses, epoch_times = [], [], []
     start_time = time.time()
 
-    # trains on all training batches
-    # validates on validation set
-    # measures epoch duration
-    # tracks --> train loss, validation loss, validation accuracy, epoch time
+    # Training Loop:
+    # - trains on each dataset
+    # - validates on validation set
+    # - measures epoch duration
+    # - tracks --> train loss, validation loss, validation accuracy, epoch time
     for epoch in range(epochs):
         epoch_start = time.time()
         model.train()
@@ -87,6 +91,7 @@ for device_type in ['cuda', 'cpu']:
 
         print(f"Epoch {epoch+1}/{epochs} - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}, Val Acc: {val_acc:.2%}, Time: {epoch_time:.2f}s")
 
+        # Saves best model based on validation loss
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             torch.save(model.state_dict(), f'best_model_{device_type}.pth')
@@ -95,7 +100,7 @@ for device_type in ['cuda', 'cpu']:
     total_train_time = end_time - start_time
     training_times[device_type] = total_train_time
 
-    # Save per-device plots
+    # Save Loss and Time Plots -- per device
     plt.figure()
     plt.plot(train_losses, label='Train Loss')
     plt.plot(val_losses, label='Validation Loss')
@@ -120,7 +125,7 @@ for device_type in ['cuda', 'cpu']:
     plt.close()
 
 
-# --- Inference Time per Image Comparison ---
+# --- Inference Time per Image ---
 inference_times = {}
 for device_type in ['cuda', 'cpu']:
     if device_type == 'cuda' and not torch.cuda.is_available():
@@ -157,17 +162,7 @@ plt.savefig('inference_time_comparison.png')
 plt.close()
 
 
-
-# ---Total Training Time Comparison ---
-
-# Save training and inference times to CSV
-with open('performance_metrics.csv', 'w', newline='') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(['Device', 'Training Time (s)', 'Inference Time per Image (s)'])
-    for device in training_times:
-        writer.writerow([device, training_times[device], inference_times.get(device, 'N/A')])
-
-# --- Bar Chart ---
+# ---Bar Chart: Total Training Time Comparison ---
 plt.figure()
 bars = plt.bar(training_times.keys(), training_times.values())
 plt.ylabel('Total Time (s)')
@@ -185,3 +180,10 @@ plt.ylabel('Total Time (s)')
 plt.title('Total Training Time: GPU vs CPU')
 plt.savefig('training_time_comparison.png')
 plt.close()
+
+# Save training and inference times to CSV
+with open('performance_metrics.csv', 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['Device', 'Training Time (s)', 'Inference Time per Image (s)'])
+    for device in training_times:
+        writer.writerow([device, training_times[device], inference_times.get(device, 'N/A')])
